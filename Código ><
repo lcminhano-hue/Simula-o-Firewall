@@ -1,0 +1,62 @@
+##Simulação ataque DDOS;
+##Criação de aplicação que simula um firewall;
+##O firewall bloqueia o ataque DDOS.
+
+
+#importamos todos os módulos necessários;
+
+import os #Biblioteca para interagir com o S.O
+import sys #Operações específicas, como encerrar o script
+import time #rastreia intervalos de tempo
+from collections import defaultdict #gerenciar a contagem de pacote para cada endereço
+from scapy.all import sniff, import #importamos a sniff função e a classe IP, que nos permite analisar pacotes de rede;
+
+
+#declaramos uma variável que representa o limite de um ataque DOS;
+
+THRESHOLD = 40 #representa a taxa máxima de pacotes de alta impedância por segundo para um endereço IP
+print(f"THRESHOLD: {THRESHOLD}") #Imprimimos o valor
+
+#declaramos uma função de retorno
+#usada principalmente para incrementar a contagem de pacotes -
+#-para cada endereço IP de origem, calcular a taxa de pacotes -
+#- e bloquear o IP quando ethernet exceder o limite.
+
+def packet_callback(packet): #recebe o argumento "packet".
+    src_ip=packet[IP].src #extraimos o endereço IP de origem do pacote. src =Source
+    packet_count[src_ip] +=1 #incrementamos a contagem de pacotes para o endereço IP de origem.
+    current_time = time.time() #Registramos a hora atual
+    time_interval = current_time -start_time[0] #calculamos o intervalo de tempo, subtraindo a hora de início - hora atual;
+
+
+    if time_interval >=1: #checamos se é maior ou igual a 1. O script avalia se um ataque de DoS está acontecendo, a uma frequência de uma vez por segundo;
+        for ip, count in packet_count.items():# se for >=1, o loop "for" executará a classificação através da contagem de pacotes para cada endereço 
+            packet_rate = count / time_interval #então calculamos a taxa de pacote dividindo / a contagem de intervalo;
+            #print(f"IP: {ip}, packet rate: {packet_rate}") #esta funçaõ é para mais detalhes; Está comentado mas podemos tirar o comentário;
+            if packet_rate > THRESHOLD and ip not in blocked_ips: #verificar se a taxa de pacotes excede o limite -40 neste caso;e verificamos se o IP já não foi bloqueado.
+                print(f"blocking IP: {ip}, packet rate: {packet.rate}") #mensagem indicando que o endereço IP está sendo bloqueado;
+                os.system(f"iptables -A INPUT -s {ip} -j DROP") #bloqueamos o endereço também com o comando "iptables" com a função do sistema operacional.
+                blocked_ips.add(ip) #Após bloquear o IP, adicionamos o conjunto de IPS bloqueados para manter o controle dos IP's bloqueados;
+            
+
+        
+        packet_count.clear() #Limpamos o contador de pacotes
+        start_time[0] = current_time # Reiniciamos o cronômetro para repetir o processo;
+
+
+#declaramos a função principal, usada principalmente para verificar privilégios de root
+#inicializar variáveis de contagem de pacotes e tempo de inicio
+#bem como inciar o "sniffing" com uma função de retorno;
+    if__name__=="__main__":
+        if os.geteuid() != 0: #Vemos se foi executado com o privilégio de admin
+            print("esse script precisa de privilégio de superusuário.") #Caso não seja feito com o privilégio de admin;
+            sys.exit(1) #encerra o script
+
+
+        packet_count = defaultdict(int) #em seguida, inicializamos o dicionário de contagem de pacotes  com um dicionário padrão, que é uma estrutura de dados especializada.
+        start_time = [time.time()]# depois registramos o horário de inicio do script
+        blocked_ips = set()#inicializamos um conjunto de IP's bloqueados para amarzenar endereço de IP bloqueados.
+
+        print("Monitorando o tráfego...")#Informamos ao usuário que o tráfego de rede e o monitoramento começou.
+        sniff(filter="ip", prn=packet_callback)#iniciamos o sniffing de pacotes IP e os passamos para função de retorno chamada de pacotes para análise
+
